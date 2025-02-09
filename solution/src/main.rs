@@ -6,18 +6,20 @@ use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex};
 // const BASE_TEXT: &str = "blockchain";
 const BASE_TEXT: &str = "hello world ";
 const REQUEST_PREFIX: &str = "0000000";
+const STARTING_NONCE: i64 = 1_645_901_534;
 
 fn main() {
     let start = Instant::now();
-    let (found, hash) = multi_run(4);
+    // let (found, hash) = simple_run();
+    let (found, hash) = multi_run(2);
     let duration = start.elapsed();
 
-    println!("({:?}) {}: {}", duration, found, hash);
+    println!("[{}]:({:?}) {}: {}", found - STARTING_NONCE, duration, found, hash);
 }
 
 #[allow(dead_code)]
-fn simple_run() -> (i32, String) {
-    let mut nonce = 0;
+fn simple_run() -> (i64, String) {
+    let mut nonce = STARTING_NONCE;
     let size = REQUEST_PREFIX.len();
     let mut base_hasher = Sha256::new();
     base_hasher.update(BASE_TEXT);
@@ -38,7 +40,7 @@ fn simple_run() -> (i32, String) {
 }
 
 #[allow(dead_code)]
-fn multi_run(num_threads: usize) ->(i32, String) {
+fn multi_run(num_threads: usize) ->(i64, String) {
     let found_flag = Arc::new(AtomicBool::new(false));
     let result = Arc::new(Mutex::new(None));
 
@@ -53,7 +55,7 @@ fn multi_run(num_threads: usize) ->(i32, String) {
         let base_hasher_clone = base_hasher.clone();
 
         let handle = thread::spawn(move || {
-            let mut nonce = thread_id as i32;
+            let mut nonce = STARTING_NONCE + thread_id as i64;
             while !found_flag_clone.load(Ordering::Relaxed) {
                 let mut hasher = base_hasher_clone.clone();
                 hasher.update(nonce.to_string().as_bytes());
@@ -67,7 +69,7 @@ fn multi_run(num_threads: usize) ->(i32, String) {
                     break;
                 }
 
-                nonce += num_threads as i32;
+                nonce += num_threads as i64;
             }
         });
 
